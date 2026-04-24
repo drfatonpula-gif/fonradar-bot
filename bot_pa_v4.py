@@ -11,8 +11,8 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 
 TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
-GITHUB_USER = os.environ.get("GITHUB_USER", "drfatonpula-gif")
-GITHUB_REPO = os.environ.get("GITHUB_REPO", "fonradar-bot")
+GITHUB_USER      = "drfatonpula-gif"
+GITHUB_REPO      = "fonradar-kosovo"
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 YAHOO   = "https://query1.finance.yahoo.com/v8/finance/chart"
@@ -121,34 +121,54 @@ def haber_mesaj():
 def pdf_index_guncelle():
     global PDF_INDEX, PDF_INDEX_TARİH
     print("📄 PDF index güncelleniyor...")
+
     GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
-    gh_headers = {"User-Agent": "Mozilla/5.0", "Authorization": f"token {GITHUB_TOKEN}"} if GITHUB_TOKEN else HEADERS
+    api_headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/vnd.github+json"}
+    if GITHUB_TOKEN:
+        api_headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
+    raw_headers = {"User-Agent": "Mozilla/5.0"}
+
     url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/pdfs"
     try:
-        r = requests.get(url, headers=gh_headers, timeout=15)
-        if r.status_code == 404:
-            print("  pdfs/ klasoru yok")
+        r = requests.get(url, headers=api_headers, timeout=15)
+        print(f"  GitHub API status: {r.status_code}")
+        if r.status_code != 200:
+            print(f"  API yaniti: {r.text[:200]}")
             return 0
         tum_dosyalar = r.json()
+        if not isinstance(tum_dosyalar, list):
+            print(f"  Beklenmeyen yanit: {tum_dosyalar}")
+            return 0
         uzantilar = (".pdf", ".docx", ".doc")
         dosyalar = [
             f for f in tum_dosyalar
             if isinstance(f, dict)
             and f.get("name", "").lower().endswith(uzantilar)
-            and f.get("size", 0) <= 5000000
+            and f.get("size", 0) <= 20_000_000
         ]
-        print(f"  {len(dosyalar)} dosya bulundu (5MB altı)")
+        print(f"  Toplam {len(tum_dosyalar)} oge, {len(dosyalar)} dosya uygun.")
+        if not dosyalar:
+            for f in tum_dosyalar[:5]:
+                if isinstance(f, dict):
+                    print(f"    - {f.get('name')} ({f.get('size')} B)")
     except Exception as e:
         print(f"  API hatasi: {e}")
         return 0
 
     yeni = {}
     for d in dosyalar:
-        print(f"  📖 {d['name']} okunuyor...")
+        ad = d["name"]
+        print(f"  📖 {ad} ({d.get('size')} B) indiriliyor...")
         try:
-            rb = requests.get(d["download_url"], headers=gh_headers, timeout=30)
+            rb = requests.get(d["download_url"], headers=raw_headers, timeout=60)
+            if rb.status_code != 200 or not rb.content:
+                print(f"    Indirme basarisiz: status={rb.status_code}")
+                continue
+            suffix = ".docx" if ad.lower().endswith((".docx", ".doc")) else ".pdf"
+            if suffix == ".pdf" and not rb.content.startswith(b"%PDF"):
+                print(f"    PDF imzasi yok: {rb.content[:80]!r}")
+                continue
             import tempfile
-            suffix = ".docx" if d["name"].lower().endswith((".docx", ".doc")) else ".pdf"
             with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
                 tmp.write(rb.content)
                 tmp_path = tmp.name
@@ -157,7 +177,7 @@ def pdf_index_guncelle():
                 if suffix == ".docx":
                     from docx import Document
                     doc = Document(tmp_path)
-                    metin = " ".join([p.text for p in doc.paragraphs if p.text.strip()])
+                    metin = " ".join(p.text for p in doc.paragraphs if p.text.strip())
                     sayfalar = [{"n": 1, "t": metin}]
                 else:
                     from pdfminer.high_level import extract_pages
@@ -171,14 +191,18 @@ def pdf_index_guncelle():
                                 t += el.get_text()
                         sayfalar.append({"n": no, "t": t.strip()})
             except Exception as e2:
-                print(f"    Okuma hatasi: {e2}")
-                sayfalar = [{"n": 1, "t": ""}]
-            os.unlink(tmp_path)
+                print(f"    Okuma hatasi: {type(e2).__name__}: {e2}")
+            finally:
+                try: os.unlink(tmp_path)
+                except: pass
             if sayfalar:
-                yeni[d["name"]] = sayfalar
-                print(f"  ✅ {len(sayfalar)} sayfa indexlendi")
+                yeni[ad] = sayfalar
+                bos = sum(1 for s in sayfalar if not s["t"])
+                print(f"    {len(sayfalar)} sayfa ({bos} bos)")
+            else:
+                print(f"    {ad}: 0 sayfa")
         except Exception as e:
-            print(f"  ❌ {e}")
+            print(f"  {ad}: {type(e).__name__}: {e}")
         time.sleep(1)
 
     PDF_INDEX = yeni
