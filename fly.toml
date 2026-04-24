@@ -1,5 +1,0 @@
-app = "fonradar-bot"
-primary_region = "fra"
-
-[build]
-  builder = "paketobuildpacks/builder:base"
