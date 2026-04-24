@@ -134,9 +134,13 @@ def pdf_index_guncelle():
  
     yeni={}
     for d in dosyalar:
-        print(f"  📖 {d['name']} okunuyor...")
-        try:
-            rb=requests.get(d["download_url"], headers=GITHUB_HEADERS, timeout=30)
+    # 5MB üzeri dosyaları atla
+    if d.get("size", 0) > 5000000:
+        print(f"  ⏭ {d['name']} çok büyük ({d['size']//1000000}MB) — atlandı")
+        continue
+    print(f"  📖 {d['name']} okunuyor...")
+    try:
+        rb=requests.get(d["download_url"], headers=GITHUB_HEADERS, timeout=30)
             import tempfile, re
             with tempfile.NamedTemporaryFile(suffix=".pdf",delete=False) as tmp:
                 tmp.write(rb.content); tmp_path=tmp.name
