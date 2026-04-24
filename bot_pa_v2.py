@@ -14,7 +14,9 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 GITHUB_USER      = "drfatonpula-gif"
 GITHUB_REPO      = "fonradar-bot"
  
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 HEADERS = {"User-Agent": "Mozilla/5.0"}
+GITHUB_HEADERS = {"User-Agent": "Mozilla/5.0", "Authorization": f"token {GITHUB_TOKEN}"}
 YAHOO   = "https://query1.finance.yahoo.com/v8/finance/chart"
  
 HATIRLATMALAR = []
@@ -123,7 +125,7 @@ def pdf_index_guncelle():
     print("📄 PDF index güncelleniyor...")
     url=f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/pdfs"
     try:
-        r=requests.get(url, headers=HEADERS, timeout=15)
+        r=requests.get(url, headers=GITHUB_HEADERS, timeout=15)
         if r.status_code==404:
             print("  pdfs/ klasörü yok")
             return 0
@@ -134,7 +136,7 @@ def pdf_index_guncelle():
     for d in dosyalar:
         print(f"  📖 {d['name']} okunuyor...")
         try:
-            rb=requests.get(d["download_url"], headers=HEADERS, timeout=30)
+            rb=requests.get(d["download_url"], headers=GITHUB_HEADERS, timeout=30)
             import tempfile, re
             with tempfile.NamedTemporaryFile(suffix=".pdf",delete=False) as tmp:
                 tmp.write(rb.content); tmp_path=tmp.name
