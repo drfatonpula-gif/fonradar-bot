@@ -129,7 +129,7 @@ def pdf_index_guncelle():
         if r.status_code==404:
             print("  pdfs/ klasörü yok")
             return 0
-        dosyalar=[f for f in r.json() if isinstance(f,dict) and f.get("name","").lower().endswith(".pdf")]
+        dosyalar=[f for f in r.json() if isinstance(f,dict) and f.get("name","").lower().endswith((".pdf",".docx",".doc"))]
     except: return 0
  
     yeni={}
