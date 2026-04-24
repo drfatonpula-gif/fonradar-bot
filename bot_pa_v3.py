@@ -11,8 +11,8 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 
 TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
-GITHUB_USER      = "drfatonpula-gif"
-GITHUB_REPO      = "fonradar-kosovo"
+GITHUB_USER = os.environ.get("GITHUB_USER", "drfatonpula-gif")
+GITHUB_REPO = os.environ.get("GITHUB_REPO", "fonradar-bot")
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 YAHOO   = "https://query1.finance.yahoo.com/v8/finance/chart"
